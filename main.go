@@ -1,11 +1,31 @@
 package main
 
 import (
+	"bytes"
+	"embed"
 	"github.com/hajimehoshi/ebiten/v2"
+	"image"
+	_ "image/png"
 	"log"
-
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
+
+var (
+	assets embed.FS
+	//go:embed assets/PNG/playerShip1_blue.png
+	playerShipData []byte
+
+	PlayerSprite = loadImage(playerShipData)
+)
+
+func loadImage(data []byte) *ebiten.Image {
+
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		panic(err)
+	}
+
+	return ebiten.NewImageFromImage(img)
+}
 
 type Game struct{}
 
@@ -14,7 +34,7 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Hello, World!")
+	screen.DrawImage(PlayerSprite, nil)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
