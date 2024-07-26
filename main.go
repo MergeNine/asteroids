@@ -9,12 +9,19 @@ import (
 	"log"
 )
 
+const (
+	screenWidth  = 320
+	screenHeight = 240
+
+	frameWidth  = 99
+	frameHeight = 75
+)
+
 var (
 	assets embed.FS
 	//go:embed assets/PNG/playerShip1_blue.png
 	playerShipData []byte
-
-	PlayerSprite = loadImage(playerShipData)
+	PlayerSprite   = loadImage(playerShipData)
 )
 
 func loadImage(data []byte) *ebiten.Image {
@@ -34,7 +41,11 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.DrawImage(PlayerSprite, nil)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(-frameWidth/2, -frameHeight/2)
+	op.GeoM.Translate(screenWidth/2, screenHeight/2)
+
+	screen.DrawImage(PlayerSprite, op)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
