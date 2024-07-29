@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
 	"image"
 	_ "image/png"
@@ -48,45 +49,39 @@ func (g *Game) Update() error {
 	speedY := float64(200 / ebiten.TPS())
 
 	if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		g.playerPosition.Y -= speedY
+		if g.playerPosition.Y > 0 {
+			g.playerPosition.Y -= speedY
+		}
+		fmt.Println(g.playerPosition.Y, g.playerPosition.X)
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		g.playerPosition.Y += speedY
+		if g.playerPosition.Y < screenHeight-frameHeight {
+			g.playerPosition.Y += speedY
+		}
+		fmt.Println(g.playerPosition.Y, g.playerPosition.X)
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-
-		g.playerPosition.X -= speedX
+		if g.playerPosition.X > 0 {
+			g.playerPosition.X -= speedX
+		}
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-
-		g.playerPosition.X += speedX
+		if g.playerPosition.X < screenWidth-frameWidth {
+			g.playerPosition.X += speedX
+		}
 	}
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
-	//op.GeoM.Translate(-frameWidth/2, -frameHeight/2)
-	//op.GeoM.Translate(screenWidth/2, screenHeight/2)
 	op.GeoM.Translate(g.playerPosition.X, g.playerPosition.Y)
-	//width := PlayerSprite.Bounds().Dx()
-	//height := PlayerSprite.Bounds().Dy()
-	//
-	//halfW := float64(width / 2)
-	//halfH := float64(height / 2)
-	//op.GeoM.Translate(-halfW, -halfH)
-	//op.GeoM.Rotate(45.0 * math.Pi / 180.0)
-	//op.GeoM.Translate(halfW, halfH)
 
-	//ops := &colorm.DrawImageOptions{}
-	//cm := colorm.ColorM{}
-	//cm.Translate(1.0, 1.0, 1.0, 0.0)
-	//colorm.DrawImage(screen, PlayerSprite, cm, ops)
 	screen.DrawImage(PlayerSprite, op)
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-
 	return 320, 240
 }
 
