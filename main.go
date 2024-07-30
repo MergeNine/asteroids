@@ -5,11 +5,11 @@ import (
 	"embed"
 	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image"
 	_ "image/png"
 	"log"
 	"math"
+	"time"
 )
 
 const (
@@ -25,11 +25,19 @@ var (
 	//go:embed assets/PNG/playerShip1_blue.png
 	playerShipData []byte
 	PlayerSprite   = loadImage(playerShipData)
+	keyHoldTime    = make(map[ebiten.Key]time.Time)
+	keyState       = make(map[ebiten.Key]bool)
+	initGroAmt     = 200.0
+	frameRate      = 60.0
+	start          = time.Now()
+	keyPressTime   time.Time
+	keyHeld        bool
+	totalDuration  time.Duration
 )
 
 type Game struct {
-	playerPosition Vector
-	thrust         Thrust
+	pPos Vector
+	t    Thrust
 }
 
 type Vector struct {
@@ -38,50 +46,80 @@ type Vector struct {
 }
 
 type Thrust struct {
-	time      int
-	magnitude int
+	accel float64
 }
 
 func (g *Game) Update() error {
+	currentTime := time.Now()
+	expGro := initGroAmt * (math.Pow(1+g.t.accel/250, float64(2)))
+	expGro = math.Min(expGro, 2000)
 
-	expGro := float64(g.thrust.magnitude*2) * (math.Pow(float64(1+(g.thrust.magnitude)/100), float64(g.thrust.time)))
-	fmt.Println(expGro)
-	speedX := expGro
-	speedY := float64(200 / ebiten.TPS())
+	//fmt.Println(expGro)
+	speedX := expGro / frameRate
+	speedY := expGro / frameRate
+	// Calculate elapsed time since the last frame
+	elapsedSinceLastFrame := currentTime.Sub(start)
+	start = currentTime
+	for _, key := range []ebiten.Key{ebiten.KeyUp, ebiten.KeyDown, ebiten.KeyLeft, ebiten.KeyRight} {
 
-	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		if ebiten.IsKeyPressed(key) {
 
-		if g.playerPosition.Y > 0 {
-			g.playerPosition.Y -= speedY
+			if !keyState[key] {
+				// Key was just pressed
+				keyPressTime = currentTime
+				keyState[key] = true
+			}
+
+			// Calculate the duration the key has been held this frame
+			if keyState[key] {
+				totalDuration += elapsedSinceLastFrame
+			}
+			switch key {
+
+			case ebiten.KeyUp:
+				if g.pPos.Y > 0 {
+					g.t.accel = float64(totalDuration.Milliseconds())
+					g.pPos.Y -= speedY
+				} else {
+					start = time.Now()
+				}
+			case ebiten.KeyDown:
+				if g.pPos.Y < screenHeight-frameHeight {
+					g.t.accel = float64(totalDuration.Milliseconds())
+					g.pPos.Y += speedY
+				} else {
+					start = time.Now()
+				}
+			case ebiten.KeyLeft:
+				if g.pPos.X > 0 {
+					g.t.accel = float64(totalDuration.Milliseconds())
+					g.pPos.X -= speedX
+				} else {
+					start = time.Now()
+				}
+			case ebiten.KeyRight:
+				if g.pPos.X < screenWidth-frameWidth {
+					g.t.accel = float64(totalDuration.Milliseconds())
+					g.pPos.X += speedX
+					fmt.Println(totalDuration.Milliseconds())
+				} else {
+					start = time.Now()
+				}
+			default:
+				fmt.Println("no key pressed")
+			}
+
+		} else {
+			if keyState[key] {
+				// Key was released, calculate duration
+				keyState[key] = false
+				duration := time.Since(keyPressTime)
+				fmt.Printf("Key %v held for: %v\n", key, duration)
+				totalDuration = 0 // Reset total duration after key release
+
+			}
 		}
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		if g.playerPosition.Y < screenHeight-frameHeight {
-			g.playerPosition.Y += speedY
-		}
-		//fmt.Println(g.playerPosition.Y, g.playerPosition.X)
-	}
 
-	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		pressDur := inpututil.KeyPressDuration(ebiten.KeyLeft)
-		if g.playerPosition.X > 0 {
-			g.thrust.time = pressDur / 10
-			g.thrust.magnitude = pressDur / 10
-			g.playerPosition.X -= speedX
-		}
-
-		//if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
-		//	t.keyHeld()
-		//	fmt.Println(t.time, t.magnitude)
-		//}
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		pressDur := inpututil.KeyPressDuration(ebiten.KeyRight)
-		if g.playerPosition.X < screenWidth-frameWidth {
-			g.thrust.time = pressDur / 10
-			g.thrust.magnitude = pressDur / 10
-			g.playerPosition.X += speedX
-		}
 	}
 
 	return nil
@@ -89,7 +127,7 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(g.playerPosition.X, g.playerPosition.Y)
+	op.GeoM.Translate(g.pPos.X, g.pPos.Y)
 
 	screen.DrawImage(PlayerSprite, op)
 
@@ -103,8 +141,8 @@ func main() {
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("Hello, World!")
 	if err := ebiten.RunGame(&Game{
-		playerPosition: Vector{X: 100, Y: 100},
-		thrust:         Thrust{time: 1, magnitude: 1},
+		pPos: Vector{X: 100, Y: 100},
+		t:    Thrust{accel: 1},
 	}); err != nil {
 		log.Fatal(err)
 	}
